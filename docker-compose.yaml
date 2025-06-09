@@ -1,0 +1,95 @@
+volumes:
+    grafana_data:
+    prometheus_data:
+
+networks:
+    homelab:
+        name: homelab
+        driver: bridge
+
+services:
+    grafana:
+        container_name: grafana
+        image: grafana/grafana:latest
+        hostname: hp-server-grafana
+        restart: unless-stopped
+        networks:
+            - homelab
+        volumes:
+            - grafana_data:/var/lib/grafana:rw
+            - ./grafana/provisioning:/etc/grafana/provisioning:rw
+
+
+    cadvisor:
+        container_name: cadvisor
+        image: gcr.io/cadvisor/cadvisor
+        hostname: hp-server-cadvisor-exporter
+        restart: unless-stopped
+        privileged: true
+        networks:
+            - homelab
+        expose:
+            - 8080
+        command:
+            - "-housekeeping_interval=15s"
+            - "-docker_only=true"
+            - "-store_container_labels=false"
+        devices:
+            - /dev/kmsg
+        volumes:
+            - /:/rootfs:ro
+            - /var/run:/var/run:ro
+            - /sys:/sys:ro
+            - /var/lib/docker/:/var/lib/docker:ro
+            - /dev/disk/:/dev/disk:ro
+
+    speedtest-exporter:
+        image: miguelndecarvalho/speedtest-exporter
+        hostname: hp-server-speedtest-exporter
+        container_name: speedtest-exporter
+        networks:
+            - homelab
+        expose:
+            - 9798
+        restart: unless-stopped
+
+    node-exporter_alpine:
+        image: linuxtips/node-exporter_alpine
+        hostname: hp-server-node-exporter
+        container_name: node-exporter-alpine
+        restart: unless-stopped        
+        networks:
+            - homelab
+        expose:
+            - 9100
+        volumes:
+            - /proc:/usr/proc
+            - /sys:/usr/sys
+            - /:/rootfs
+
+    prometheus:
+        container_name: prometheus
+        image: prom/prometheus:latest
+        hostname: hp-server-prometheus
+        restart: unless-stopped
+        user: "nobody"
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=15d"
+        networks:
+            - homelab
+        volumes:
+            - prometheus_data:/prometheus:rw
+            - ./prometheus:/etc/prometheus/:rw
+
+    net-tools:
+        image: someguy123/net-tools
+        networks:
+            - homelab
+        tty: true
+        stdin_open: true
+        ports:
+            - "127.0.0.1:2222:22"
+        container_name: nettools
+
