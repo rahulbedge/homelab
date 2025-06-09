@@ -35,7 +35,7 @@ scrape_configs:
   - job_name: 'speedtest'
     static_configs:
       - targets: ['hp-server-speedtest-exporter:9798']
-    scrape_interval: 30s
+    scrape_interval: 60m
     scrape_timeout: 30s
 
   - job_name: 'hp-server-node-exporter'
