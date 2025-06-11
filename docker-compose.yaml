@@ -157,6 +157,9 @@ services:
     traefik:
         image: traefik:v2.10
         command:
+            - "--log.level=DEBUG"     # Enable debug logging
+            - "--accesslog=true"     # Enable access logs
+            - "--accesslog.fields.headers.defaultmode=keep"  # Keep HTTP headers in logs
             - "--api.dashboard=true"
             - "--api.insecure=false"
             - "--providers.docker=true"
