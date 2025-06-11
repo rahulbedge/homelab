@@ -25,22 +25,22 @@ scrape_configs:
     # Override the global default and scrape targets from this job every 5 seconds.
     scrape_interval: 30s
     static_configs:
-         - targets: ['localhost:9090']
+      - targets: ['localhost:9090']
 
   - job_name: 'cadvisor'
     scrape_interval: 30s
     static_configs:
-      - targets: ['hp-server-cadvisor-exporter:8080']
+      - targets: ['cadvisor:8080']
 
   - job_name: 'speedtest'
     static_configs:
-      - targets: ['hp-server-speedtest-exporter:9798']
-    scrape_interval: 60m
+      - targets: ['speedtest-exporter:9798']
+    scrape_interval: 30s
     scrape_timeout: 30s
 
   - job_name: 'hp-server-node-exporter'
     static_configs:
-      - targets: ['hp-server-node-exporter:9100']
+      - targets: ['node_exporter:9100']
     scrape_interval: 30s
 
   - job_name: 'piaus-node-exporter'
