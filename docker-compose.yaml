@@ -5,10 +5,22 @@ volumes:
         driver: local
     prometheus_data:
         driver: local
+    traefik_certs:
+        driver: local
+
 
 networks:
     homelab:
         driver: overlay    # Changed to overlay for swarm mode
+    traefik-public:
+        driver: overlay
+        attachable: true
+
+secrets:
+    traefik_duckdns_token:
+        external: true    # Will be managed through Portainer
+    traefik_acme_email:
+        external: true    # Will be managed through Portainer
 
 services:
     grafana:
@@ -122,3 +134,44 @@ services:
             restart_policy:
                 condition: on-failure
 
+    traefik:
+        image: traefik:v2.10
+        command:
+            - "--api.dashboard=true"
+            - "--api.insecure=false"
+            - "--providers.docker=true"
+            - "--providers.docker.swarmMode=true"
+            - "--providers.docker.exposedbydefault=false"
+            - "--providers.docker.network=traefik-public"
+            - "--entrypoints.web.address=:80"
+            - "--entrypoints.websecure.address=:443"
+            - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+            - "--certificatesresolvers.duckdns.acme.dnschallenge=true"
+            - "--certificatesresolvers.duckdns.acme.dnschallenge.provider=duckdns"
+            - "--certificatesresolvers.duckdns.acme.storage=/certs/acme.json"
+        ports:
+            - "81:80"
+            - "443:443"
+            - "8081:8080"  # Dashboard
+        volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock:ro"
+            - "traefik_certs:/certs"
+        secrets:
+            - traefik_duckdns_token
+            - traefik_acme_email
+        environment:
+            - "DUCKDNS_TOKEN_FILE=/run/secrets/traefik_duckdns_token"
+            - "TRAEFIK_CERTIFICATESRESOLVERS_DUCKDNS_ACME_EMAIL_FILE=/run/secrets/acme_email"
+        networks:
+            - traefik-public
+        deploy:
+            placement:
+                constraints:
+                    - node.role == manager
+            labels:
+                - "traefik.enable=true"
+                - "traefik.http.routers.dashboard.rule=Host(`traefik.dwarka.duckdns.org`)"
+                - "traefik.http.routers.dashboard.service=api@internal"
+                - "traefik.http.routers.dashboard.tls.certresolver=duckdns"
+                - "traefik.http.routers.dashboard.entrypoints=websecure"
+                - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
