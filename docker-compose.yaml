@@ -8,7 +8,6 @@ volumes:
     traefik_certs:
         driver: local
 
-
 networks:
     homelab:
         driver: overlay    # Changed to overlay for swarm mode
@@ -25,18 +24,23 @@ secrets:
 services:
     grafana:
         image: grafana/grafana:latest
-        hostname: hp-server-grafana
         networks:
             - homelab
+            - traefik-public
         volumes:
             - grafana_data:/var/lib/grafana:rw
             - ./grafana/provisioning:/etc/grafana/provisioning:rw
-        ports:
-            - "3000:3000"
         deploy:
             replicas: 1
             restart_policy:
                 condition: on-failure
+            labels:
+                - "traefik.enable=true"
+                - "traefik.http.routers.grafana.rule=Host(`grafana.dwarka.duckdns.org`)"
+                - "traefik.http.routers.grafana.service=grafana"
+                - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+                - "traefik.http.routers.grafana.tls.certresolver=duckdns"
+                - "traefik.http.routers.grafana.entrypoints=websecure"
         healthcheck:
             test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
             interval: 30s
@@ -45,47 +49,53 @@ services:
             
     cadvisor:
         image: gcr.io/cadvisor/cadvisor
-        hostname: hp-server-cadvisor-exporter
         networks:
             - homelab
-        ports:           # Changed expose to ports
-            - "8080:8080"
+            - traefik-public
         command:
             - "-housekeeping_interval=15s"
             - "-docker_only=true"
             - "-store_container_labels=false"
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+            labels:
+                - "traefik.enable=true"
+                - "traefik.http.routers.cadvisor.rule=Host(`cadvisor.dwarka.duckdns.org`)"
+                - "traefik.http.services.cadvisor.loadbalancer.server.port=8080"
+                - "traefik.http.routers.cadvisor.tls.certresolver=duckdns"
+                - "traefik.http.routers.cadvisor.entrypoints=websecure"
         volumes:
             - /:/rootfs:ro
             - /var/run:/var/run:ro
             - /sys:/sys:ro
             - /var/lib/docker/:/var/lib/docker:ro
             - /dev/disk/:/dev/disk:ro
-        deploy:
-            replicas: 1
-            restart_policy:
-                condition: on-failure
         
     speedtest-exporter:
         image: miguelndecarvalho/speedtest-exporter
-        hostname: hp-server-speedtest-exporter
         networks:
             - homelab
-        ports:           # Changed expose to ports
-            - "9798:9798"
+            - traefik-public
         deploy:
             replicas: 1
             restart_policy:
                 condition: on-failure
+            labels:
+                - "traefik.enable=true"
+                - "traefik.http.routers.speedtest.rule=Host(`speedtest.dwarka.duckdns.org`)"
+                - "traefik.http.services.speedtest.loadbalancer.server.port=9798"
+                - "traefik.http.routers.speedtest.tls.certresolver=duckdns"
+                - "traefik.http.routers.speedtest.entrypoints=websecure"
 
     node_exporter:
         image: quay.io/prometheus/node-exporter:latest
-        hostname: hp-server-node-exporter
         command:
         - '--path.rootfs=/host'
         networks:
             - homelab
-        ports:           # Changed expose to ports
-            - "9100:9100"
+            - traefik-public
         pid: host
         restart: unless-stopped
         volumes:
@@ -94,11 +104,16 @@ services:
             replicas: 1
             restart_policy:
                 condition: on-failure
+            labels:
+                - "traefik.enable=true"
+                - "traefik.http.routers.node-exporter.rule=Host(`node-exporter.dwarka.duckdns.org`)"
+                - "traefik.http.services.node-exporter.loadbalancer.server.port=9100"
+                - "traefik.http.routers.node-exporter.tls.certresolver=duckdns"
+                - "traefik.http.routers.node-exporter.entrypoints=websecure"
 
 
     prometheus:
         image: prom/prometheus:latest
-        hostname: hp-server-prometheus
         user: "nobody"
         command:
             - "--config.file=/etc/prometheus/prometheus.yml"
@@ -106,8 +121,7 @@ services:
             - "--storage.tsdb.retention.time=15d"
         networks:
             - homelab
-        ports:
-            - "9090:9090"
+            - traefik-public
         volumes:
             - prometheus_data:/prometheus:rw
             - ./prometheus:/etc/prometheus/:rw
@@ -115,6 +129,12 @@ services:
             replicas: 1
             restart_policy:
                 condition: on-failure
+            labels:
+                - "traefik.enable=true"
+                - "traefik.http.routers.prometheus.rule=Host(`prometheus.dwarka.duckdns.org`)"
+                - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+                - "traefik.http.routers.prometheus.tls.certresolver=duckdns"
+                - "traefik.http.routers.prometheus.entrypoints=websecure"
         healthcheck:
             test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
             interval: 30s
@@ -161,7 +181,7 @@ services:
             - traefik_acme_email
         environment:
             - "DUCKDNS_TOKEN_FILE=/run/secrets/traefik_duckdns_token"
-            - "TRAEFIK_CERTIFICATESRESOLVERS_DUCKDNS_ACME_EMAIL_FILE=/run/secrets/acme_email"
+            - "TRAEFIK_CERTIFICATESRESOLVERS_DUCKDNS_ACME_EMAIL_FILE=/run/secrets/traefik_acme_email"
         networks:
             - traefik-public
         deploy:
