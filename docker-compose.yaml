@@ -37,7 +37,7 @@ services:
             labels:
                 - "traefik.enable=true"
                 - "traefik.docker.network=homelab_traefik-public"
-                - "traefik.http.routers.grafana.rule=Host(`grafana.dwarka.duckdns.org`)"
+                - "traefik.http.routers.grafana.rule=Host(`grafana.brahmand.duckdns.org`)"
                 - "traefik.http.routers.grafana.service=grafana"
                 - "traefik.http.services.grafana.loadbalancer.server.port=3000"
                 - "traefik.http.routers.grafana.tls.certresolver=duckdns"
@@ -163,7 +163,7 @@ services:
             labels:
                 - "traefik.enable=true"
                 - "traefik.docker.network=homelab_traefik-public"
-                - "traefik.http.routers.dashboard.rule=Host(`traefik.dwarka.duckdns.org`)"
+                - "traefik.http.routers.dashboard.rule=Host(`traefik.brahmand.duckdns.org`)"
                 - "traefik.http.routers.dashboard.service=api@internal"
                 - "traefik.http.routers.dashboard.tls.certresolver=duckdns"
                 - "traefik.http.routers.dashboard.entrypoints=websecure"
