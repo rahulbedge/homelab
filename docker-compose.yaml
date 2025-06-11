@@ -130,9 +130,6 @@ services:
     traefik:
         image: traefik:v2.10
         command:
-            - "--log.level=DEBUG"     # Enable debug logging
-            - "--accesslog=true"     # Enable access logs
-            - "--accesslog.fields.headers.defaultmode=keep"  # Keep HTTP headers in logs
             - "--api.dashboard=true"
             - "--api.insecure=false"
             - "--providers.docker=true"
@@ -146,9 +143,8 @@ services:
             - "--certificatesresolvers.duckdns.acme.dnschallenge.provider=duckdns"
             - "--certificatesresolvers.duckdns.acme.storage=/certs/acme.json"
         ports:
-            - "81:80"
+            - "80:80"
             - "443:443"
-            - "8081:8080"  # Dashboard
         volumes:
             - "/var/run/docker.sock:/var/run/docker.sock:ro"
             - "traefik_certs:/certs"
