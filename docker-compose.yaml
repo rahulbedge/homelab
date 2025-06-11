@@ -36,7 +36,7 @@ services:
                 condition: on-failure
             labels:
                 - "traefik.enable=true"
-                - "traefik.docker.network=traefik-public"
+                - "traefik.docker.network=homelab_traefik-public"
                 - "traefik.http.routers.grafana.rule=Host(`grafana.dwarka.duckdns.org`)"
                 - "traefik.http.routers.grafana.service=grafana"
                 - "traefik.http.services.grafana.loadbalancer.server.port=3000"
@@ -166,7 +166,7 @@ services:
                     - node.role == manager
             labels:
                 - "traefik.enable=true"
-                - "traefik.docker.network=traefik-public"
+                - "traefik.docker.network=homelab_traefik-public"
                 - "traefik.http.routers.dashboard.rule=Host(`traefik.dwarka.duckdns.org`)"
                 - "traefik.http.routers.dashboard.service=api@internal"
                 - "traefik.http.routers.dashboard.tls.certresolver=duckdns"
