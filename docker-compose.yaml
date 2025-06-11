@@ -1,77 +1,92 @@
+version: "3.8"
+
 volumes:
     grafana_data:
+        driver: local
     prometheus_data:
+        driver: local
 
 networks:
     homelab:
-        name: homelab
-        driver: bridge
+        driver: overlay    # Changed to overlay for swarm mode
 
 services:
     grafana:
-        container_name: grafana
         image: grafana/grafana:latest
         hostname: hp-server-grafana
-        restart: unless-stopped
         networks:
             - homelab
         volumes:
             - grafana_data:/var/lib/grafana:rw
             - ./grafana/provisioning:/etc/grafana/provisioning:rw
-
-
+        ports:
+            - "3000:3000"
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+        healthcheck:
+            test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            
     cadvisor:
-        container_name: cadvisor
         image: gcr.io/cadvisor/cadvisor
         hostname: hp-server-cadvisor-exporter
-        restart: unless-stopped
-        privileged: true
         networks:
             - homelab
-        expose:
-            - 8080
+        ports:           # Changed expose to ports
+            - "8080:8080"
         command:
             - "-housekeeping_interval=15s"
             - "-docker_only=true"
             - "-store_container_labels=false"
-        devices:
-            - /dev/kmsg
         volumes:
             - /:/rootfs:ro
             - /var/run:/var/run:ro
             - /sys:/sys:ro
             - /var/lib/docker/:/var/lib/docker:ro
             - /dev/disk/:/dev/disk:ro
-
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+        
     speedtest-exporter:
         image: miguelndecarvalho/speedtest-exporter
         hostname: hp-server-speedtest-exporter
-        container_name: speedtest-exporter
         networks:
             - homelab
-        expose:
-            - 9798
-        restart: unless-stopped
+        ports:           # Changed expose to ports
+            - "9798:9798"
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
 
-    node-exporter_alpine:
-        image: linuxtips/node-exporter_alpine
+    node_exporter:
+        image: quay.io/prometheus/node-exporter:latest
         hostname: hp-server-node-exporter
-        container_name: node-exporter-alpine
-        restart: unless-stopped        
+        command:
+        - '--path.rootfs=/host'
         networks:
             - homelab
-        expose:
-            - 9100
+        ports:           # Changed expose to ports
+            - "9100:9100"
+        pid: host
+        restart: unless-stopped
         volumes:
-            - /proc:/usr/proc
-            - /sys:/usr/sys
-            - /:/rootfs
+        - '/:/host:ro,rslave'
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+
 
     prometheus:
-        container_name: prometheus
         image: prom/prometheus:latest
         hostname: hp-server-prometheus
-        restart: unless-stopped
         user: "nobody"
         command:
             - "--config.file=/etc/prometheus/prometheus.yml"
@@ -79,9 +94,20 @@ services:
             - "--storage.tsdb.retention.time=15d"
         networks:
             - homelab
+        ports:
+            - "9090:9090"
         volumes:
             - prometheus_data:/prometheus:rw
             - ./prometheus:/etc/prometheus/:rw
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+        healthcheck:
+            test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
 
     net-tools:
         image: someguy123/net-tools
@@ -91,5 +117,8 @@ services:
         stdin_open: true
         ports:
             - "127.0.0.1:2222:22"
-        container_name: nettools
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
 
